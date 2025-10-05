@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codeverse Login</title>
+<style>
+body{font-family:sans-serif;background:#f4f6ff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+.login-card{background:#fff;padding:32px;border-radius:12px;box-shadow:0 6px 20px rgba(17,24,39,0.08);width:100%;max-width:400px;text-align:center}
+.login-card h1{margin-bottom:24px;color:#4f46e5}
+.login-card input{width:100%;padding:12px;margin:10px 0;border-radius:8px;border:1px solid #e6e9f2;font-size:16px}
+.login-card button{width:100%;padding:12px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+.login-card button:hover{background:#4338ca}
+.error-msg{color:#e11d48;font-size:14px;margin-top:8px;display:block}
+</style>
+</head>
+<body>
+<div class="login-card">
+  <h1>Codeverse Login</h1>
+  <h4>Powered by Tcs ion</h4>
+  {% if error %}
+    <div class="error-msg">{{ error }}</div>
+  {% endif %}
+  <form method="POST">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Login</button>
+  </form>
+</div>
+</body>
+</html>

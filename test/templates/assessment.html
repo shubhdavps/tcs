@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Codeverse Assessment — One Question Per Page</title>
+<style>
+  :root{--accent:#4f46e5;--bg:#f4f6ff;--card:#fff}
+  body{font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);margin:0;padding:24px;display:flex;justify-content:center}
+  .wrap{width:100%;max-width:900px}
+  .card{background:var(--card);border-radius:12px;padding:20px;box-shadow:0 6px 20px rgba(17,24,39,0.08)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  h1{font-size:20px;margin:0}
+  #timer{font-weight:700;color:#e11d48}
+  #cameraBox{position:fixed;right:18px;top:18px;border:2px solid var(--accent);border-radius:8px;overflow:hidden;background:#000;z-index:30}
+  video{width:200px;height:150px;object-fit:cover;display:block}
+  .question-area{margin-top:12px}
+  .qno{font-weight:700;margin-bottom:6px}
+  .qtext{font-size:18px;margin:4px 0 12px}
+  .options{display:flex;flex-direction:column;gap:8px}
+  label.option{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;border:1px solid #e6e9f2;cursor:pointer}
+  label.option input{transform:scale(1.1)}
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}
+  .btn{background:var(--accent);color:#fff;padding:10px 16px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+  .btn.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .progress{height:10px;background:#eef2ff;border-radius:999px;overflow:hidden}
+  .progress > i{display:block;height:100%;background:var(--accent);width:0%}
+  #resultBox{display:none;margin-top:18px}
+  pre.responses{white-space:pre-wrap;background:#0b1220;color:#dbeafe;padding:12px;border-radius:8px;overflow:auto}
+  .small{font-size:13px;color:#6b7280}
+  footer{margin-top:12px;text-align:center;color:#6b7280;font-size:13px}
+  @media(max-width:640px){ video{width:140px;height:110px} header{flex-direction:column;align-items:flex-start;gap:8px} }
+</style>
+</head>
+<body>
+  <div id="cameraBox" style="display:none" title="Live camera (proctor)">
+    <video id="camera" autoplay playsinline muted></video>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <div>
+          <h1>Codeverse Assessment</h1>
+          <div class="small">40 Questions — One per page — 45 minutes</div>
+        </div>
+        <div>
+          <div id="timer">Time Left: 45:00</div>
+        </div>
+      </header>
+
+      <div id="startPage" class="card-inner">
+        <p>Hello! This test contains 40 questions (20 aptitude + 20 technical). Camera access is required for proctoring — please allow camera when requested. Click <strong>Start Test</strong> to begin.</p>
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button class="btn" id="startBtn">Start Test</button>
+          <button class="btn secondary" id="viewInstructions">Instructions</button>
+        </div>
+        <div id="instructions" style="display:none;margin-top:12px" class="small card">
+          <ul>
+            <li>One question is shown per page. Use Next / Previous to navigate.</li>
+            <li>Timer runs continuously (60 minutes). Test auto-submits when time ends.</li>
+            <li>Camera feed is visible for proctoring — please keep your face visible.</li>
+            <li>Your answers can be downloaded after submission as a JSON file.</li>
+            <li>Do not refresh or close the tab during the test — you will lose progress.</li>
+            <li>If you block camera, the test will continue but without proctoring.</li>
+            <li>For any issues, contact the test administrator immediately.</li>
+            <li>Good luck!</li>
+            
+          </ul>
+        </div>
+      </div>
+
+      <div id="testArea" style="display:none">
+        <div class="progress" aria-hidden="true"><i id="progBar"></i></div>
+
+        <div class="question-area" id="questionArea">
+          <!-- Question will be rendered here -->
+        </div>
+
+        <div class="nav">
+          <div>
+            <button class="btn secondary" id="prevBtn">Previous</button>
+            <button class="btn" id="nextBtn">Next</button>
+          </div>
+          <div style="text-align:right">
+            <div class="small">Question <span id="currentNo">1</span> of <span id="totalNo">40</span></div>
+            <div style="margin-top:8px">
+              <button class="btn secondary" id="submitBtn">Submit Test</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="resultBox" class="card" style="margin-top:16px">
+        <h2 style="margin-top:0">Test Submitted</h2>
+        <p class="small">Your responses have been recorded. You can download them using the button below.</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          
+          
+        </div>
+        <div id="responses" style="margin-top:12px;display:none">
+          <pre class="responses" id="respPre"></pre>
+        </div>
+      </div>
+
+      <footer>
+        <span class="small">Built for Codeverse — Tcs ion Product @2025.</span>
+      </footer>
+    </div>
+  </div>
+
+<script>
+/* ========== QUESTIONS (40) ========== */
+const questions = [
+  // Aptitude 1-20
+  { q:"1. If 12 men can complete a work in 8 days, how many days will 6 men take?", o:["8","12","16","20"] },
+  { q:"2. What is the average of 12, 15, 10, and 9?", o:["11.5","12","13.5","14"] },
+  { q:"3. A train 120 m long crosses a pole in 6 seconds. Speed?", o:["60 km/h","72 km/h","80 km/h","90 km/h"] },
+  { q:"4. 3/5 of a number is 24. What is the number?", o:["30","36","40","45"] },
+  { q:"5. Find the missing number: 2, 6, 12, 20, ?", o:["28","30","32","34"] },
+  { q:"6. The sum of two consecutive odd numbers is 56. The numbers are?", o:["27 & 29","29 & 31","25 & 27","31 & 33"] },
+  { q:"7. The area of a circle with radius 7 cm is? (π≈22/7)", o:["144 cm²","154 cm²","147 cm²","160 cm²"] },
+  { q:"8. 15% of 200 is equal to?", o:["20","25","30","35"] },
+  { q:"9. What is the simple interest on ₹5000 at 5% for 2 years?", o:["₹250","₹400","₹500","₹300"] },
+  { q:"10. Find x if 2x + 3 = 9", o:["3","2","4","6"] },
+  { q:"11. The smallest prime number is?", o:["0","1","2","3"] },
+  { q:"12. The cube root of 27 is?", o:["2","3","4","5"] },
+  { q:"13. A man walks 5 km north, then 3 km east. Distance from start?", o:["8 km","5 km","√34 km","10 km"] },
+  { q:"14. A sells a pen for ₹60 at a loss of 25%. Cost price?", o:["₹75","₹80","₹90","₹70"] },
+  { q:"15. Which number is divisible by 9?", o:["315","412","522","621"] },
+  { q:"16. Find HCF of 24 and 36", o:["6","8","12","18"] },
+  { q:"17. If 5 workers complete a wall in 10 days, 10 workers will take?", o:["2 days","3 days","5 days","7 days"] },
+  { q:"18. Convert 0.25 to fraction.", o:["1/2","1/4","2/5","3/4"] },
+  { q:"19. If selling price = cost price, then profit/loss?", o:["Profit","Loss","No profit no loss","Can't say"] },
+  { q:"20. If 40% of x = 80, then x =", o:["160","180","200","220"] },
+
+  // Technical 21-40
+  { q:"21. Which language is used to style web pages?", o:["HTML","CSS","Python","C++"] },
+  { q:"22. In Python, which keyword defines a function?", o:["func","define","def","lambda"] },
+  { q:"23. Which data structure follows LIFO?", o:["Stack","Queue","Array","List"] },
+  { q:"24. Which HTML tag inserts a line break?", o:["<br>","<p>","<hr>","<break>"] },
+  { q:"25. What is the extension of JavaScript files?", o:[".js",".java",".py",".css"] },
+  { q:"26. In SQL, which command is used to remove all records?", o:["DELETE","REMOVE","DROP","CLEAR"] },
+  { q:"27. Which of these is not a programming language?", o:["Python","HTML","C","Java"] },
+  { q:"28. React is mainly used for?", o:["Server-side logic","Styling","Building UI","Database"] },
+  { q:"29. Which symbol starts a comment in Python?", o:["//","#","/*","--"] },
+  { q:"30. Which of these is not an operating system?", o:["Linux","Windows","Oracle","macOS"] },
+  { q:"31. In C, 'printf' is used for?", o:["Input","Output","Loop","Condition"] },
+  { q:"32. Java is a ____ language.", o:["Markup","Programming","Styling","Database"] },
+  { q:"33. Which of these is a NoSQL database?", o:["MySQL","PostgreSQL","MongoDB","SQLite"] },
+  { q:"34. In Python, lists are written using?", o:["{}","()","[]","<>"] },
+  { q:"35. API stands for?", o:["Application Programming Interface","Advanced Program Instruction","Active Protocol Integration","Applied Process Input"] },
+  { q:"36. Which is used to store multiple values in JS?", o:["Array","String","Char","Int"] },
+  { q:"37. CSS property to change text color?", o:["font-color","text-color","color","font"] },
+  { q:"38. JavaScript runs in?", o:["Browser","Database","Compiler","Server only"] },
+  { q:"39. IDE stands for?", o:["Integrated Development Environment","Internal Data Execution","Input Data Exchange","Interactive Data Engine"] },
+  { q:"40. The default port for HTTPS?", o:["21","80","443","8080"] }
+];
+
+const total = questions.length;
+document.getElementById('totalNo').innerText = total;
+
+/* ========== STATE ========== */
+let currentIndex = 0;                 // 0-based
+const answers = Array(total).fill(null); // store selected option index
+let timer = 60 * 60; // seconds (60 minutes)
+let timerInterval = null;
+let stream = null;
+
+/* ========== ELEMENTS ========== */
+const startBtn = document.getElementById('startBtn');
+const viewInstructions = document.getElementById('viewInstructions');
+const instructions = document.getElementById('instructions');
+const cameraBox = document.getElementById('cameraBox');
+const cameraEl = document.getElementById('camera');
+const startPage = document.getElementById('startPage');
+const testArea = document.getElementById('testArea');
+const questionArea = document.getElementById('questionArea');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const submitBtn = document.getElementById('submitBtn');
+const timerEl = document.getElementById('timer');
+const currentNo = document.getElementById('currentNo');
+const progBar = document.getElementById('progBar');
+const resultBox = document.getElementById('resultBox');
+const downloadBtn = document.getElementById('downloadBtn');
+const viewRespBtn = document.getElementById('viewRespBtn');
+const responsesDiv = document.getElementById('responses');
+const respPre = document.getElementById('respPre');
+
+/* ========== HELPERS ========== */
+
+function renderQuestion(i){
+  const item = questions[i];
+  currentNo.innerText = i+1;
+  const prog = Math.round(((i)/ (total-1)) * 100);
+  progBar.style.width = prog + '%';
+
+  // build HTML
+  const html = `
+    <div>
+      <div class="qno">Q${i+1}</div>
+      <div class="qtext">${escapeHtml(item.q)}</div>
+      <div class="options">
+        ${item.o.map((opt, idx) => {
+          const checked = answers[i] === idx ? 'checked' : '';
+          return `<label class="option"><input type="radio" name="opt" value="${idx}" ${checked}> <span>${escapeHtml(opt)}</span></label>`;
+        }).join('')}
+      </div>
+      <div class="small" style="margin-top:10px">Selected: ${answers[i]===null ? 'None' : (answers[i]+1)}</div>
+    </div>
+  `;
+  questionArea.innerHTML = html;
+
+  // disable prev/next appropriately
+  prevBtn.disabled = i===0;
+  nextBtn.innerText = (i===total-1) ? 'Finish' : 'Next';
+}
+
+function escapeHtml(str){
+  return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
+
+function saveCurrentSelection(){
+  const radios = document.getElementsByName('opt');
+  for(const r of radios){
+    if(r.checked){
+      answers[currentIndex] = Number(r.value);
+      break;
+    }
+  }
+}
+
+/* ========== NAVIGATION ========== */
+prevBtn.addEventListener('click', ()=>{
+  saveCurrentSelection();
+  if(currentIndex>0){ currentIndex--; renderQuestion(currentIndex); }
+});
+nextBtn.addEventListener('click', ()=>{
+  saveCurrentSelection();
+  if(currentIndex < total-1){
+    currentIndex++;
+    renderQuestion(currentIndex);
+  } else {
+    // last question -> confirm finish
+    if(confirm('You are on the last question. Submit test now?')){
+      submitTest();
+    }
+  }
+});
+
+/* ========== START & CAMERA ========== */
+viewInstructions.addEventListener('click', ()=>{ instructions.style.display = instructions.style.display==='none' ? 'block' : 'none'; });
+
+startBtn.addEventListener('click', async ()=>{
+  // show camera & start test
+  startPage.style.display = 'none';
+  testArea.style.display = 'block';
+  cameraBox.style.display = 'block';
+  await startCamera();
+  startTimer();
+  renderQuestion(currentIndex);
+});
+
+/* camera start */
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    cameraEl.srcObject = stream;
+    // keep camera muted (not recording audio)
+  } catch(err){
+    cameraBox.style.display = 'none';
+    alert('Camera access was blocked or not available. For proctoring you must allow camera. The test will still continue but without camera.');
+  }
+}
+
+/* ========== TIMER ========== */
+function startTimer(){
+  updateTimerDisplay();
+  timerInterval = setInterval(()=>{
+    timer--;
+    if(timer<=0){
+      clearInterval(timerInterval);
+      alert('Time is up. Test will be submitted automatically.');
+      submitTest();
+    } else {
+      updateTimerDisplay();
+    }
+  },1000);
+}
+
+function updateTimerDisplay(){
+  const mm = Math.floor(timer/60);
+  const ss = timer % 60;
+  timerEl.innerText = `Time Left: ${mm}:${ss<10 ? '0'+ss : ss}`;
+}
+
+/* ========== SUBMIT ========== */
+submitBtn.addEventListener('click', ()=>{
+  if(confirm('Are you sure you want to submit the test now?')){
+    saveCurrentSelection();
+    submitTest();
+  }
+});
+
+function submitTest(){
+  // stop timer and camera
+  if(timerInterval) clearInterval(timerInterval);
+  if(stream){
+    stream.getTracks().forEach(t => t.stop());
+    cameraBox.style.display = 'none';
+  }
+  testArea.style.display = 'none';
+  resultBox.style.display = 'block';
+
+  // prepare results object
+  const payload = {
+    meta: {
+      totalQuestions: total,
+      submittedAt: new Date().toISOString(),
+      durationSeconds: 60*60 - timer
+    },
+    answers: questions.map((q, idx) => ({
+      qNo: idx+1,
+      question: q.q,
+      options: q.o,
+      selectedOptionIndex: answers[idx],
+      selectedOptionText: answers[idx] !== null ? q.o[answers[idx]] : null
+    }))
+  };
+
+  // show minimal summary
+  respPre.textContent = JSON.stringify(payload, null, 2);
+
+  // make download available
+  downloadBtn.onclick = ()=>downloadJSON(payload, `codeverse_responses_${new Date().toISOString().slice(0,19).replaceAll(':','-')}.json`);
+  viewRespBtn.onclick = ()=>{ responsesDiv.style.display = responsesDiv.style.display === 'none' ? 'block' : 'none'; }
+}
+
+/* ========== DOWNLOAD HELP ========== */
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ========== SAFE BEFOREUNLOAD PROMPT ========== */
+window.addEventListener('beforeunload', (e)=>{
+  if(testArea.style.display !== 'none' && resultBox.style.display === 'none'){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ========== INITIAL UI STATE ========== */
+renderQuestion(0);
+
+/* ========== Optional: keyboard navigation (Left/Right) ========== */
+document.addEventListener('keydown', (e)=>{
+  if(testArea.style.display === 'block' && resultBox.style.display === 'none'){
+    if(e.key === 'ArrowLeft') prevBtn.click();
+    if(e.key === 'ArrowRight') nextBtn.click();
+  }
+});
+</script>
+</body>
+</html>
